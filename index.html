@@ -2270,7 +2270,7 @@ function buildCommentNotifyBar(taskId, commentText){
   // Notify all responsible members except the author
   const withEmail = resp
     .map(name=>teamMembers.find(m=>m.name===name))
-    .filter(m=>m && m.email && m.name!==CURRENT_USER);
+    .filter(m=>m && m.email && m.name!==getCurrentUserName());
   if(!withEmail.length) return null;
   const emails  = withEmail.map(m=>m.email).join(',');
   const names   = withEmail.map(m=>m.name.split(' ')[0]).join(', ');
@@ -2284,7 +2284,7 @@ Um novo comentário foi publicado na tarefa:
     `📝 ${task.desc}
 
 `+
-    `💬 Comentário de ${CURRENT_USER}:
+    `💬 Comentário de ${getCurrentUserName()}:
 "${commentText.substring(0,200)}"
 
 `+
@@ -2322,7 +2322,7 @@ document.addEventListener('keydown',e=>{
 const SK_COMMENTS = 'cgo_comments_v2';
 let comments = {};       // {taskId: [{id,author,authorColor,text,timestamp,reactions,replies,views}]}
 let upTaskId  = null;    // currently open task id
-const CURRENT_USER = 'Nivaldo S R Júnior';
+function getCurrentUserName(){if(!currentUser)return 'Desconhecido';var member=teamMembers.find(function(m){return m.email&&m.email.toLowerCase()===currentUser.email.toLowerCase();});if(member)return member.name;return currentUser.displayName||currentUser.email;}
 
 function loadComments(){
   // loaded inside loadStorage() via Firestore; localStorage handled by loadLocal()
@@ -2380,7 +2380,7 @@ function buildUpItem(c){
 
   const reactionBtns = reactionEmojis.map(e=>{
     const count = (reactions[e]||[]).length;
-    const hasReacted = (reactions[e]||[]).includes(CURRENT_USER);
+    const hasReacted = (reactions[e]||[]).includes(getCurrentUserName());
     return count>0
       ? `<button class="up-reaction-btn ${hasReacted?'reacted':''}"
            onclick="toggleReaction('${c.id}','${e}')">${e} ${count}</button>`
@@ -2418,8 +2418,8 @@ function buildUpItem(c){
     </div>
     <div class="up-replies" id="replies-${c.id}">${repliesHtml}</div>
     <div class="up-reply-form" id="reply-form-${c.id}" style="display:none">
-      <div class="up-av" style="background:${memberColor(CURRENT_USER)};width:26px;height:26px;font-size:9px;flex-shrink:0">
-        ${memberInitials(CURRENT_USER)}</div>
+      <div class="up-av" style="background:${memberColor(getCurrentUserName())};width:26px;height:26px;font-size:9px;flex-shrink:0">
+        ${memberInitials(getCurrentUserName())}</div>
       <textarea class="up-reply-input" rows="1"
         placeholder="Escreva uma resposta e mencione outros com @"
         onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();submitReply('${c.id}',this);}"></textarea>
@@ -2448,10 +2448,10 @@ function submitUpdate(){
   const txt = ta.value.trim();
   if(!txt) return;
   if(!comments[upTaskId]) comments[upTaskId]=[];
-  const color = memberColor(CURRENT_USER);
+  const color = memberColor(getCurrentUserName());
   comments[upTaskId].push({
     id:        Date.now().toString(36)+Math.random().toString(36).slice(2),
-    author:    CURRENT_USER,
+    author:    getCurrentUserName(),
     authorColor: color,
     text:      txt,
     timestamp: new Date().toISOString(),
@@ -2485,9 +2485,9 @@ function toggleReaction(commentId, emoji){
   if(!c) return;
   if(!c.reactions) c.reactions={};
   if(!c.reactions[emoji]) c.reactions[emoji]=[];
-  const idx = c.reactions[emoji].indexOf(CURRENT_USER);
+  const idx = c.reactions[emoji].indexOf(getCurrentUserName());
   if(idx>=0) c.reactions[emoji].splice(idx,1);
-  else        c.reactions[emoji].push(CURRENT_USER);
+  else        c.reactions[emoji].push(getCurrentUserName());
   saveComments();
   renderUpList();
 }
@@ -2530,8 +2530,8 @@ function submitReply(commentId, inputEl){
   if(!c.replies) c.replies=[];
   c.replies.push({
     id:        Date.now().toString(36),
-    author:    CURRENT_USER,
-    authorColor: memberColor(CURRENT_USER),
+    author:    getCurrentUserName(),
+    authorColor: memberColor(getCurrentUserName()),
     text:      txt,
     timestamp: new Date().toISOString(),
   });
