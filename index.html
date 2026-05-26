@@ -1039,6 +1039,11 @@ header p{font-size:12px;opacity:.75;margin-top:2px;}
         </div>
       </div>
       <div class="frow">
+                <div class="fgrp"><label>Processo SEI n°</label>
+                          <input type="text" id="f-sei" placeholder="Ex: 23096.080999/2021-89" style="font-family:monospace;letter-spacing:.5px">
+                                  </div>
+                                        </div>
+                                              <div class="frow">
         <div class="fgrp"><label>Status</label>
           <select id="f-status">
             <option>Não iniciado</option><option>Em andamento</option>
@@ -2098,6 +2103,7 @@ function openTaskModal(){
   document.getElementById('f-resp').value='';
   initRespPicker([]);
   document.getElementById('f-coord').value='';
+  document.getElementById('f-sei').value='';
   document.getElementById('f-priority').value='';
   document.getElementById('f-status').value='Não iniciado';
   document.getElementById('f-section').value='ativas';
@@ -2117,6 +2123,7 @@ function openEditModal(id,evt){
   document.getElementById('f-resp').value=(task.resp||[]).join(', ');
   initRespPicker(task.resp||[]);
   document.getElementById('f-coord').value=task.coordenador||'';
+  document.getElementById('f-sei').value=task.sei||'';
   document.getElementById('f-priority').value=task.priority||'';
   document.getElementById('f-status').value=task.status||'Não iniciado';
   document.getElementById('f-section').value=task.section||'ativas';
@@ -2165,6 +2172,7 @@ function saveTaskModal(){
     atribuicao:document.getElementById('f-atrib').value||null,
     prazo:document.getElementById('f-prazo').value||null,
     coordenador:document.getElementById('f-coord').value.trim()||null,
+    sei:document.getElementById('f-sei').value.trim()||null,
     subs,
   };
 
