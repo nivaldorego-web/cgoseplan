@@ -1606,6 +1606,7 @@ function buildCard(task){
   const durB=dur?`<span class="badge-label">Duração da tarefa:</span><span class="badge" style="background:#f0f4ff;color:#5b21b6">⏱ ${dur}</span>`:'';
 
   const coordB=task.coordenador?`<span class="badge-label">Coord. TED:</span><span class="badge bcoord">📋 ${task.coordenador}</span>`:'';
+  const seiB=task.sei?`<span class="badge-label">Processo SEI:</span><span class="badge" style="background:#eff6ff;color:#1d4ed8;font-family:monospace;font-size:11px">🔢 ${task.sei}</span>`:'';
   const newB=isUser?`<span class="badge bnew">✨ Nova</span>`:'';
 
   // Progress
@@ -1659,7 +1660,7 @@ function buildCard(task){
           ${task.prazo && task.status!=='Feito' ? `<div class="prazo-dot prazo-dot-${dstatus||'ok'}" title="${dstatus==='over'?'Atrasada':dstatus==='near'?'Vence em breve':'No prazo'}"></div>` : ''}
         </div>
         <div class="tc-desc">${task.desc}</div>
-        <div class="tc-meta">${pB}${sB}${rB}<span class="badge-atrib">${atribB}</span>${prazoB}<span class="badge-dur">${durB}</span><span class="badge-coord">${coordB}</span><span class="badge-new">${newB}</span></div>
+        <div class="tc-meta">${pB}${sB}${rB}<span class="badge-atrib">${atribB}</span>${prazoB}<span class="badge-dur">${durB}</span><span class="badge-coord">${coordB}</span>${seiB}<span class="badge-new">${newB}</span></div>
         ${task.status!=='Feito' ? buildPctBar(task) : ''}
       </div>
       <div class="tc-right">
