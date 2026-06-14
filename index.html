@@ -804,7 +804,7 @@ header p{font-size:12px;opacity:.75;margin-top:2px;}
 }
 
 /* ── TABLE VIEW ── */
-#table-container{display:none;padding:0 28px 40px;max-width:1440px;margin:0 auto;}
+#table-container{display:none;padding:0 20px 40px;width:100%;box-sizing:border-box;}
 .tbl-grp{margin-bottom:24px;}
 .tbl-grp-hdr{display:flex;align-items:center;gap:8px;padding:10px 0 8px;cursor:pointer;user-select:none;}
 .tbl-grp-toggle{font-size:10px;color:var(--muted);transition:transform .2s;display:inline-block;}
@@ -1857,7 +1857,7 @@ function renderTblCell(col, task){
 }
 
 function buildTableRow(task){
-  const cells=tblCols.map(col=>`<td class="tbl-cell" style="width:${col.width}px;max-width:${col.width}px" onclick="event.stopPropagation()" ondblclick="openEditModal(${task.id},event)">${renderTblCell(col,task)}</td>`).join('');
+  const cells=tblCols.map(col=>`<td class="tbl-cell" style="${col.id==='desc'?'':'width:'+col.width+'px;max-width:'+col.width+'px'}" onclick="event.stopPropagation()" ondblclick="openEditModal(${task.id},event)">${renderTblCell(col,task)}</td>`).join('');
   return `<tr class="tbl-row" id="tbl-row-${task.id}" onclick="openEditModal(${task.id},event)">${cells}</tr>`;
 }
 
@@ -1868,7 +1868,7 @@ function buildTblHeader(){
     }
     const sorted=tblSort.col===col.id;
     const sortIc=sorted?(tblSort.dir==='asc'?'▲':'▼'):'';
-    return `<th class="tbl-col-hdr${sorted?' tbl-col-sorted':''}" style="width:${col.width}px;position:relative"
+    return `<th class="tbl-col-hdr${sorted?' tbl-col-sorted':''}" style="width:${col.id==='desc'?'auto':col.width+'px'};position:relative"
       draggable="true"
       ondragstart="tblDragStart(event,${i})"
       ondragover="tblDragOver(event,${i})"
@@ -1890,7 +1890,7 @@ function renderTableSection(label, tasks, badgeBg, badgeFg, gid){
       <span class="tbl-grp-count">${tasks.length}</span>
     </div>
     <div id="tbl-body-${gid}" style="overflow-x:auto">
-      <table class="tbl-cols" style="table-layout:fixed;min-width:max-content">
+      <table class="tbl-cols" style="table-layout:fixed;width:100%;min-width:900px">
         <thead>${buildTblHeader()}</thead>
         <tbody>
           ${tasks.map(buildTableRow).join('')}
