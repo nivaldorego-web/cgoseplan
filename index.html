@@ -841,6 +841,7 @@ header p{font-size:12px;opacity:.75;margin-top:2px;}
 .tbl-coord{font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;}
 .tbl-add-row td{padding:8px 12px;font-size:12px;color:#94a3b8;cursor:pointer;transition:color .2s;background:#fafafa;}
 .tbl-add-row:hover td{color:var(--accent);background:#f0f4ff;}
+.tbl-actions{display:flex;align-items:center;gap:6px;justify-content:flex-end;}
 </style>
 </head>
 <body>
@@ -1765,6 +1766,7 @@ let tblCols = [
   {id:'status',  label:'Status',        width:145},
   {id:'coord',   label:'Coordenador',   width:120},
   {id:'sei',     label:'Processo SEI',  width:140},
+  {id:'actions', label:'',              width:160, fixed:true},
 ];
 let tblSort    = {col:null, dir:'asc'};
 let tblDragIdx = null;
@@ -1841,6 +1843,15 @@ function renderTblCell(col, task){
       return task.coordenador?`<span class="tbl-coord">${task.coordenador}</span>`:'<span class="tbl-empty">–</span>';
     case 'sei':
       return task.sei?`<span class="tbl-sei">${task.sei}</span>`:'<span class="tbl-empty">–</span>';
+    case 'actions': {
+      const isConcluida = task.section==='concluidas';
+      const cmtCount = (comments[task.id]||[]).length;
+      const cmtBtn=`<button class="btn-comments ${cmtCount>0?'has-comments':''}" onclick="openUpdatesPanel(${task.id},event)" title="Atualizações">💬${cmtCount>0?' '+cmtCount:''}</button>`;
+      const doneBtn=isConcluida
+        ?`<button class="btn-reopen" onclick="reopenTask(${task.id},event)">↩ Reabrir</button>`
+        :`<button class="btn-done" onclick="markDone(${task.id},event)">✔ Concluído</button>`;
+      return `<div class="tbl-actions">${cmtBtn}${doneBtn}</div>`;
+    }
     default: return '';
   }
 }
@@ -1852,6 +1863,9 @@ function buildTableRow(task){
 
 function buildTblHeader(){
   return '<tr>'+tblCols.map((col,i)=>{
+    if(col.fixed){
+      return `<th class="tbl-col-hdr" style="width:${col.width}px;position:relative"></th>`;
+    }
     const sorted=tblSort.col===col.id;
     const sortIc=sorted?(tblSort.dir==='asc'?'▲':'▼'):'';
     return `<th class="tbl-col-hdr${sorted?' tbl-col-sorted':''}" style="width:${col.width}px;position:relative"
