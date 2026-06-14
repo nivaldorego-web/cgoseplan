@@ -1443,7 +1443,6 @@ function initAuth(){
 
 function signInWithGoogle(){
   const provider = new firebase.auth.GoogleAuthProvider();
-  provider.setCustomParameters({prompt:'select_account'});
   auth.signInWithPopup(provider).catch(function(err){
     console.warn('Login error:', err);
   });
