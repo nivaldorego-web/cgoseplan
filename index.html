@@ -810,18 +810,25 @@ header p{font-size:12px;opacity:.75;margin-top:2px;}
 .tbl-grp-toggle{font-size:10px;color:var(--muted);transition:transform .2s;display:inline-block;}
 .tbl-grp-badge{padding:3px 14px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
 .tbl-grp-count{font-size:12px;font-weight:600;color:var(--muted);}
-.tbl-cols{width:100%;border-collapse:collapse;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
-.tbl-col-hdr{background:#f8fafc;font-size:11px;font-weight:600;color:#6b7280;text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap;border-right:1px solid #f1f5f9;}
+.tbl-cols{border-collapse:collapse;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.tbl-col-hdr{background:#f8fafc;font-size:11px;font-weight:600;color:#6b7280;text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap;border-right:1px solid #e9eef4;cursor:pointer;user-select:none;overflow:hidden;}
 .tbl-col-hdr:last-child{border-right:none;}
+.tbl-col-hdr:hover{background:#eff6ff;color:#2563eb;}
+.tbl-col-sorted{background:#eff6ff!important;color:#2563eb!important;}
+.tbl-sort-ic{font-size:9px;color:#2563eb;margin-left:4px;}
+.tbl-hdr-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tbl-col-drag-over{border-left:3px solid #2563eb;background:#dbeafe!important;}
+.tbl-col-dragging{opacity:.5;}
+.tbl-resize-handle{position:absolute;right:0;top:0;bottom:0;width:5px;cursor:col-resize;z-index:2;}
+.tbl-resize-handle:hover,.tbl-resize-handle:active{background:#3b82f6;opacity:.5;}
 .tbl-row{border-bottom:1px solid #f1f5f9;cursor:pointer;transition:background .12s;}
 .tbl-row:hover{background:#f8fafc;}
-.tbl-row:last-child{border-bottom:none;}
-.tbl-cell{padding:8px 10px;font-size:13px;vertical-align:middle;border-right:1px solid #f8fafc;}
+.tbl-row:hover .tbl-resize-handle{display:none;}
+.tbl-cell{padding:7px 10px;font-size:13px;vertical-align:middle;border-right:1px solid #f8fafc;overflow:hidden;}
 .tbl-cell:last-child{border-right:none;}
-.tbl-cell-icon{width:36px;text-align:center;padding:8px 6px;}
 .tbl-sicon{width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;border:2px solid;flex-shrink:0;}
 .tbl-tipo{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);white-space:nowrap;}
-.tbl-desc{font-size:13px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:340px;}
+.tbl-desc{font-size:13px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .tbl-empty{color:#cbd5e1;font-size:12px;}
 .tbl-av-grp{display:flex;gap:3px;align-items:center;}
 .tbl-av{width:22px;height:22px;border-radius:50%;font-size:9px;font-weight:700;color:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;border:2px solid #fff;}
@@ -831,7 +838,7 @@ header p{font-size:12px;opacity:.75;margin-top:2px;}
 .tbl-pill{display:inline-flex;align-items:center;gap:3px;padding:3px 10px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;transition:filter .15s;}
 .tbl-pill:hover{filter:brightness(.9);}
 .tbl-sei{font-size:10px;font-family:monospace;color:#1d4ed8;background:#eff6ff;padding:2px 6px;border-radius:4px;white-space:nowrap;}
-.tbl-coord{font-size:12px;color:var(--text);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tbl-coord{font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;}
 .tbl-add-row td{padding:8px 12px;font-size:12px;color:#94a3b8;cursor:pointer;transition:color .2s;background:#fafafa;}
 .tbl-add-row:hover td{color:var(--accent);background:#f0f4ff;}
 </style>
@@ -1745,6 +1752,24 @@ function renderMonthGroups(taskList){
 // ══════════════════════════════════════════════════════════════
 // TABLE VIEW
 // ══════════════════════════════════════════════════════════════
+
+// Column configuration (order, width, id)
+let tblCols = [
+  {id:'tipo',    label:'Nome',          width:130},
+  {id:'desc',    label:'Descrição',     width:300},
+  {id:'resp',    label:'Responsável',   width:110},
+  {id:'atrib',   label:'Data inicial',  width:100},
+  {id:'dur',     label:'Duração',       width:85},
+  {id:'prazo',   label:'Prazo',         width:100},
+  {id:'priority',label:'Prioridade',    width:120},
+  {id:'status',  label:'Status',        width:145},
+  {id:'coord',   label:'Coordenador',   width:120},
+  {id:'sei',     label:'Processo SEI',  width:140},
+];
+let tblSort    = {col:null, dir:'asc'};
+let tblDragIdx = null;
+let tblResizing= null;
+
 function taskMatchesFilters(task){
   const s  = (document.getElementById('fsearch')?.value||'').toLowerCase().trim();
   const r  = document.getElementById('fresp')?.value||'';
@@ -1766,88 +1791,210 @@ function taskMatchesFilters(task){
   return true;
 }
 
-function buildTableRow(task){
+function calcDurTable(task){
+  const a=pd(task.atribuicao);
+  if(!a) return null;
+  const end=new Date(TODAY);
+  const days=Math.round((end-a)/86400000);
+  if(days<0) return null;
+  if(days===0) return '1d';
+  if(days<30) return days+'d';
+  const m=Math.round(days/30);
+  if(m<12) return m+'m';
+  return (days/365).toFixed(1)+'a';
+}
+
+function renderTblCell(col, task){
   const si=statusInfo(task.status);
   const pi=priorityInfo(task.priority);
   const dstatus=ds(task.prazo);
   const dateCls=dstatus==='over'?'over':dstatus==='near'?'near':'';
-  const respAvs=(task.resp||[]).slice(0,3).map(r=>`<div class="tbl-av" style="background:${memberColor(r)}" title="${r}">${memberInitials(r)}</div>`).join('');
+  switch(col.id){
+    case 'tipo': {
+      let ic='';
+      if(task.status==='Feito')                  ic=`<div class="tbl-sicon" style="background:#00c875;border-color:#00c875;color:#fff">✓</div>`;
+      else if(task.status==='Em andamento')       ic=`<div class="tbl-sicon" style="border-color:#fdab3d;color:#fdab3d">↻</div>`;
+      else if(task.status==='Parado')             ic=`<div class="tbl-sicon" style="border-color:#e2445c;color:#e2445c">■</div>`;
+      else if(task.status==='Atribuído a outro Setor') ic=`<div class="tbl-sicon" style="border-color:#0086c0;color:#0086c0">→</div>`;
+      else                                        ic=`<div class="tbl-sicon" style="border-color:#cbd5e1;color:#cbd5e1">○</div>`;
+      return `<div style="display:flex;align-items:center;gap:7px">${ic}<div class="tbl-tipo">${task.tipo}</div></div>`;
+    }
+    case 'desc':
+      return `<div class="tbl-desc" title="${task.desc.replace(/"/g,'&quot;')}">${task.desc}</div>`;
+    case 'resp': {
+      const avs=(task.resp||[]).slice(0,3).map(r=>`<div class="tbl-av" style="background:${memberColor(r)}" title="${r}">${memberInitials(r)}</div>`).join('');
+      return `<div class="tbl-av-grp">${avs||'<span class="tbl-empty">–</span>'}</div>`;
+    }
+    case 'atrib':
+      return task.atribuicao?`<span class="tbl-date" onclick="openDatePop(event,${task.id},'atribuicao')">${fmtD(task.atribuicao)}</span>`:'<span class="tbl-empty">–</span>';
+    case 'dur': {
+      const d=calcDurTable(task);
+      return d?`<span style="font-size:12px;color:#6b7280;white-space:nowrap">${d}</span>`:'<span class="tbl-empty">–</span>';
+    }
+    case 'prazo':
+      return task.prazo?`<span class="tbl-date ${dateCls}" onclick="openDatePop(event,${task.id},'prazo')">${fmtD(task.prazo)}</span>`:'<span class="tbl-empty">–</span>';
+    case 'priority':
+      return `<span class="tbl-pill" style="background:${pi.bg};color:${pi.fg}" onclick="openPrioPop(event,${task.id})">${pi.val||pi.label||'–'}</span>`;
+    case 'status':
+      return `<span class="tbl-pill" style="background:${si.bg};color:${si.fg}" onclick="openStatPop(event,${task.id})">${task.status||'–'}</span>`;
+    case 'coord':
+      return task.coordenador?`<span class="tbl-coord">${task.coordenador}</span>`:'<span class="tbl-empty">–</span>';
+    case 'sei':
+      return task.sei?`<span class="tbl-sei">${task.sei}</span>`:'<span class="tbl-empty">–</span>';
+    default: return '';
+  }
+}
 
-  let sicon='';
-  if(task.status==='Feito')
-    sicon=`<div class="tbl-sicon" style="background:#00c875;border-color:#00c875;color:#fff" title="Feito">✓</div>`;
-  else if(task.status==='Em andamento')
-    sicon=`<div class="tbl-sicon" style="background:transparent;border-color:#fdab3d;color:#fdab3d" title="Em andamento">↻</div>`;
-  else if(task.status==='Parado')
-    sicon=`<div class="tbl-sicon" style="background:transparent;border-color:#e2445c;color:#e2445c" title="Parado">■</div>`;
-  else if(task.status==='Atribuído a outro Setor')
-    sicon=`<div class="tbl-sicon" style="background:transparent;border-color:#0086c0;color:#0086c0" title="Atribuído a outro Setor">→</div>`;
-  else
-    sicon=`<div class="tbl-sicon" style="background:transparent;border-color:#cbd5e1;color:#cbd5e1" title="${task.status||'Não iniciado'}">○</div>`;
+function buildTableRow(task){
+  const cells=tblCols.map(col=>`<td class="tbl-cell" style="width:${col.width}px;max-width:${col.width}px" onclick="event.stopPropagation()" ondblclick="openEditModal(${task.id},event)">${renderTblCell(col,task)}</td>`).join('');
+  return `<tr class="tbl-row" id="tbl-row-${task.id}" onclick="openEditModal(${task.id},event)">${cells}</tr>`;
+}
 
-  return `<tr class="tbl-row" onclick="openEditModal(${task.id},event)" id="tbl-row-${task.id}">
-    <td class="tbl-cell tbl-cell-icon">${sicon}</td>
-    <td class="tbl-cell" style="min-width:130px"><div class="tbl-tipo">${task.tipo}</div></td>
-    <td class="tbl-cell" style="min-width:260px;max-width:380px"><div class="tbl-desc" title="${task.desc.replace(/"/g,'&quot;')}">${task.desc}</div></td>
-    <td class="tbl-cell" style="min-width:80px"><div class="tbl-av-grp">${respAvs||'<span class="tbl-empty">–</span>'}</div></td>
-    <td class="tbl-cell" style="min-width:90px">${task.prazo?`<span class="tbl-date ${dateCls}" onclick="openDatePop(event,${task.id},'prazo')">${fmtD(task.prazo)}</span>`:'<span class="tbl-empty">–</span>'}</td>
-    <td class="tbl-cell" style="min-width:100px"><span class="tbl-pill" style="background:${pi.bg};color:${pi.fg}" onclick="openPrioPop(event,${task.id})">${pi.label||'–'}</span></td>
-    <td class="tbl-cell" style="min-width:120px"><span class="tbl-pill" style="background:${si.bg};color:${si.fg}" onclick="openStatPop(event,${task.id})">${task.status||'–'}</span></td>
-    <td class="tbl-cell" style="min-width:90px">${task.atribuicao?`<span class="tbl-date">${fmtD(task.atribuicao)}</span>`:'<span class="tbl-empty">–</span>'}</td>
-    <td class="tbl-cell" style="min-width:110px">${task.coordenador?`<span class="tbl-coord">${task.coordenador}</span>`:'<span class="tbl-empty">–</span>'}</td>
-    <td class="tbl-cell" style="min-width:130px">${task.sei?`<span class="tbl-sei">${task.sei}</span>`:'<span class="tbl-empty">–</span>'}</td>
-  </tr>`;
+function buildTblHeader(){
+  return '<tr>'+tblCols.map((col,i)=>{
+    const sorted=tblSort.col===col.id;
+    const sortIc=sorted?(tblSort.dir==='asc'?'▲':'▼'):'';
+    return `<th class="tbl-col-hdr${sorted?' tbl-col-sorted':''}" style="width:${col.width}px;position:relative"
+      draggable="true"
+      ondragstart="tblDragStart(event,${i})"
+      ondragover="tblDragOver(event,${i})"
+      ondrop="tblDrop(event,${i})"
+      ondragend="tblDragEnd()"
+      onclick="tblSortBy('${col.id}')">
+      <span class="tbl-hdr-label">${col.label}</span>
+      ${sortIc?`<span class="tbl-sort-ic">${sortIc}</span>`:''}
+      <div class="tbl-resize-handle" onmousedown="tblResizeStart(event,${i})" onclick="event.stopPropagation()"></div>
+    </th>`;
+  }).join('')+'</tr>';
 }
 
 function renderTableSection(label, tasks, badgeBg, badgeFg, gid){
-  const colHdr=`<tr>
-    <th class="tbl-col-hdr" style="width:36px"></th>
-    <th class="tbl-col-hdr">Nome</th>
-    <th class="tbl-col-hdr">Descrição</th>
-    <th class="tbl-col-hdr">Responsável</th>
-    <th class="tbl-col-hdr">Prazo</th>
-    <th class="tbl-col-hdr">Prioridade</th>
-    <th class="tbl-col-hdr">Status</th>
-    <th class="tbl-col-hdr">Data inicial</th>
-    <th class="tbl-col-hdr">Coordenador TED</th>
-    <th class="tbl-col-hdr">Processo SEI</th>
-  </tr>`;
   return `<div class="tbl-grp" id="tbl-grp-${gid}">
     <div class="tbl-grp-hdr" onclick="toggleTblGrp('${gid}')">
       <span class="tbl-grp-toggle" id="tbl-toggle-${gid}">▼</span>
       <span class="tbl-grp-badge" style="background:${badgeBg};color:${badgeFg}">${label}</span>
       <span class="tbl-grp-count">${tasks.length}</span>
     </div>
-    <div id="tbl-body-${gid}">
-      <table class="tbl-cols">
-        <thead>${colHdr}</thead>
+    <div id="tbl-body-${gid}" style="overflow-x:auto">
+      <table class="tbl-cols" style="table-layout:fixed;min-width:max-content">
+        <thead>${buildTblHeader()}</thead>
         <tbody>
           ${tasks.map(buildTableRow).join('')}
-          <tr class="tbl-add-row"><td colspan="10" onclick="openModal()">+ Adicionar Tarefa</td></tr>
+          <tr class="tbl-add-row"><td colspan="${tblCols.length}" onclick="openModal()">+ Adicionar Tarefa</td></tr>
         </tbody>
       </table>
     </div>
   </div>`;
 }
 
+function tblSortedTasks(tasks){
+  if(!tblSort.col) return tasks;
+  const dir=tblSort.dir==='asc'?1:-1;
+  return [...tasks].sort((a,b)=>{
+    switch(tblSort.col){
+      case 'tipo':    return dir*(a.tipo||'').localeCompare(b.tipo||'','pt-BR');
+      case 'desc':    return dir*(a.desc||'').localeCompare(b.desc||'','pt-BR');
+      case 'resp':    return dir*((a.resp||[])[0]||'').localeCompare((b.resp||[])[0]||'','pt-BR');
+      case 'atrib':   return dir*(a.atribuicao||'').localeCompare(b.atribuicao||'');
+      case 'dur':     return dir*((pd(a.atribuicao)||new Date(0))-(pd(b.atribuicao)||new Date(0)));
+      case 'prazo':   return dir*(a.prazo||'').localeCompare(b.prazo||'');
+      case 'priority':return dir*((PRIO_ORDER[a.priority||'']??4)-(PRIO_ORDER[b.priority||'']??4));
+      case 'status':  return dir*((STAT_ORDER[a.status||'']??9)-(STAT_ORDER[b.status||'']??9));
+      case 'coord':   return dir*(a.coordenador||'').localeCompare(b.coordenador||'','pt-BR');
+      case 'sei':     return dir*(a.sei||'').localeCompare(b.sei||'');
+      default: return 0;
+    }
+  });
+}
+
 function renderTable(){
   const all=allTasks().filter(taskMatchesFilters);
-  const ativas=sortTasks(all.filter(t=>t.section==='ativas'));
-  const concl =sortTasks(all.filter(t=>t.section==='concluidas'));
+  const ativas=tblSortedTasks(sortTasks(all.filter(t=>t.section==='ativas')));
+  const concl =tblSortedTasks(sortTasks(all.filter(t=>t.section==='concluidas')));
   const container=document.getElementById('table-container');
-  if(!container)return;
+  if(!container) return;
   container.innerHTML=
-    renderTableSection('Tarefas Ativas', ativas, '#2563eb','#fff','ativas')+
-    renderTableSection('Concluídas',     concl,  '#00c875','#fff','concl');
+    renderTableSection('Tarefas Ativas',ativas,'#2563eb','#fff','ativas')+
+    renderTableSection('Concluídas',    concl, '#00c875','#fff','concl');
 }
 
 function toggleTblGrp(gid){
   const body=document.getElementById('tbl-body-'+gid);
   const toggle=document.getElementById('tbl-toggle-'+gid);
-  if(!body)return;
+  if(!body) return;
   const hidden=body.style.display==='none';
   body.style.display=hidden?'':'none';
   toggle.style.transform=hidden?'':'rotate(-90deg)';
+}
+
+// ── Column sort ──────────────────────────────────────────────
+function tblSortBy(colId){
+  if(tblSort.col===colId){
+    if(tblSort.dir==='asc') tblSort.dir='desc';
+    else { tblSort.col=null; tblSort.dir='asc'; }
+  } else {
+    tblSort.col=colId; tblSort.dir='asc';
+  }
+  renderTable();
+}
+
+// ── Column resize ────────────────────────────────────────────
+function tblResizeStart(e,i){
+  e.preventDefault(); e.stopPropagation();
+  tblResizing={i, startX:e.clientX, startW:tblCols[i].width};
+  document.addEventListener('mousemove', tblResizeMove);
+  document.addEventListener('mouseup',   tblResizeEnd);
+  document.body.style.cursor='col-resize';
+  document.body.style.userSelect='none';
+}
+function tblResizeMove(e){
+  if(!tblResizing) return;
+  const newW=Math.max(60, tblResizing.startW+(e.clientX-tblResizing.startX));
+  tblCols[tblResizing.i].width=newW;
+  const idx=tblResizing.i;
+  document.querySelectorAll('.tbl-cols').forEach(tbl=>{
+    const ths=tbl.querySelectorAll('thead th');
+    if(ths[idx]){ ths[idx].style.width=newW+'px'; }
+    tbl.querySelectorAll('tbody tr').forEach(tr=>{
+      const td=tr.querySelectorAll('td')[idx];
+      if(td){ td.style.width=newW+'px'; td.style.maxWidth=newW+'px'; }
+    });
+  });
+}
+function tblResizeEnd(){
+  tblResizing=null;
+  document.removeEventListener('mousemove',tblResizeMove);
+  document.removeEventListener('mouseup',  tblResizeEnd);
+  document.body.style.cursor='';
+  document.body.style.userSelect='';
+}
+
+// ── Column drag-to-reorder ───────────────────────────────────
+function tblDragStart(e,i){
+  tblDragIdx=i;
+  e.dataTransfer.effectAllowed='move';
+  e.currentTarget.classList.add('tbl-col-dragging');
+}
+function tblDragOver(e,i){
+  if(tblDragIdx===null||tblDragIdx===i) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect='move';
+  document.querySelectorAll('.tbl-col-hdr').forEach(th=>th.classList.remove('tbl-col-drag-over'));
+  document.querySelectorAll('.tbl-col-hdr')[i]?.classList.add('tbl-col-drag-over');
+}
+function tblDrop(e,i){
+  e.preventDefault();
+  if(tblDragIdx===null||tblDragIdx===i) return;
+  const moved=tblCols.splice(tblDragIdx,1)[0];
+  tblCols.splice(i,0,moved);
+  tblDragIdx=null;
+  renderTable();
+}
+function tblDragEnd(){
+  tblDragIdx=null;
+  document.querySelectorAll('.tbl-col-hdr').forEach(th=>{
+    th.classList.remove('tbl-col-dragging','tbl-col-drag-over');
+  });
 }
 
 // ══════════════════════════════════════════════════════════════
