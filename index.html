@@ -3273,6 +3273,14 @@ function setView(v){
   } else {
     listEl.style.display='';
     btnList&&btnList.classList.add('active');
+    // pré-filtrar pelo usuário logado ao entrar na Lista
+    const respSel=document.getElementById('fresp');
+    if(respSel && !respSel.value){
+      const myName=getCurrentUserName();
+      // garante que a opção existe antes de selecionar
+      const opt=[...respSel.options].find(o=>o.value===myName);
+      if(opt) respSel.value=myName;
+    }
     render();
   }
 }
