@@ -802,6 +802,38 @@ header p{font-size:12px;opacity:.75;margin-top:2px;}
 @media(max-width:768px){
   .btn-filter-toggle{display:flex;}
 }
+
+/* ── TABLE VIEW ── */
+#table-container{display:none;padding:0 28px 40px;max-width:1440px;margin:0 auto;}
+.tbl-grp{margin-bottom:24px;}
+.tbl-grp-hdr{display:flex;align-items:center;gap:8px;padding:10px 0 8px;cursor:pointer;user-select:none;}
+.tbl-grp-toggle{font-size:10px;color:var(--muted);transition:transform .2s;display:inline-block;}
+.tbl-grp-badge{padding:3px 14px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+.tbl-grp-count{font-size:12px;font-weight:600;color:var(--muted);}
+.tbl-cols{width:100%;border-collapse:collapse;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.tbl-col-hdr{background:#f8fafc;font-size:11px;font-weight:600;color:#6b7280;text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap;border-right:1px solid #f1f5f9;}
+.tbl-col-hdr:last-child{border-right:none;}
+.tbl-row{border-bottom:1px solid #f1f5f9;cursor:pointer;transition:background .12s;}
+.tbl-row:hover{background:#f8fafc;}
+.tbl-row:last-child{border-bottom:none;}
+.tbl-cell{padding:8px 10px;font-size:13px;vertical-align:middle;border-right:1px solid #f8fafc;}
+.tbl-cell:last-child{border-right:none;}
+.tbl-cell-icon{width:36px;text-align:center;padding:8px 6px;}
+.tbl-sicon{width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;border:2px solid;flex-shrink:0;}
+.tbl-tipo{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);white-space:nowrap;}
+.tbl-desc{font-size:13px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:340px;}
+.tbl-empty{color:#cbd5e1;font-size:12px;}
+.tbl-av-grp{display:flex;gap:3px;align-items:center;}
+.tbl-av{width:22px;height:22px;border-radius:50%;font-size:9px;font-weight:700;color:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;border:2px solid #fff;}
+.tbl-date{font-size:12px;white-space:nowrap;cursor:pointer;}
+.tbl-date.over{color:#ef4444;font-weight:600;}
+.tbl-date.near{color:#f59e0b;font-weight:600;}
+.tbl-pill{display:inline-flex;align-items:center;gap:3px;padding:3px 10px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;transition:filter .15s;}
+.tbl-pill:hover{filter:brightness(.9);}
+.tbl-sei{font-size:10px;font-family:monospace;color:#1d4ed8;background:#eff6ff;padding:2px 6px;border-radius:4px;white-space:nowrap;}
+.tbl-coord{font-size:12px;color:var(--text);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tbl-add-row td{padding:8px 12px;font-size:12px;color:#94a3b8;cursor:pointer;transition:color .2s;background:#fafafa;}
+.tbl-add-row:hover td{color:var(--accent);background:#f0f4ff;}
 </style>
 </head>
 <body>
@@ -834,7 +866,8 @@ header p{font-size:12px;opacity:.75;margin-top:2px;}
   </div>
   <div class="hdr-right">
     <div class="view-toggle">
-      <button class="view-btn active" id="btn-view-list" onclick="setView('list')" title="Visão Lista">☰ Lista</button>
+      <button class="view-btn" id="btn-view-list" onclick="setView('list')" title="Visão Lista">☰ Lista</button>
+      <button class="view-btn active" id="btn-view-table" onclick="setView('table')" title="Visão Tabela">▤ Tabela</button>
       <button class="view-btn" id="btn-view-kanban" onclick="setView('kanban')" title="Visão Kanban">⬛ Kanban</button>
       <button class="view-btn" id="btn-view-dash" onclick="setView('dash')" title="Dashboard">📊 Dashboard</button>
     </div>
@@ -933,6 +966,7 @@ header p{font-size:12px;opacity:.75;margin-top:2px;}
     <div class="icon">🔍</div><p>Nenhuma tarefa encontrada.</p>
   </div>
 </div>
+<div id="table-container"></div>
 <div id="kanban-container">
   <div class="kanban-board" id="kanban-board"></div>
 </div>
@@ -1425,7 +1459,7 @@ function showApp(user){
     document.getElementById('user-photo').style.display='none';
   }
   // init app only after auth confirmed
-  loadLocal(); render(); loadStorage();
+  loadLocal(); setView('table'); loadStorage();
 }
 
 function showLoginScreen(){
@@ -1709,6 +1743,114 @@ function renderMonthGroups(taskList){
 
 
 // ══════════════════════════════════════════════════════════════
+// TABLE VIEW
+// ══════════════════════════════════════════════════════════════
+function taskMatchesFilters(task){
+  const s  = (document.getElementById('fsearch')?.value||'').toLowerCase().trim();
+  const r  = document.getElementById('fresp')?.value||'';
+  const st = document.getElementById('fstatus')?.value||'';
+  const pr = document.getElementById('fpriority')?.value||'';
+  const ti = document.getElementById('ftipo')?.value||'';
+  const pe = document.getElementById('fperiod')?.value||'';
+  if(s  && !task.desc.toLowerCase().includes(s) && !(task.resp||[]).join(',').toLowerCase().includes(s)) return false;
+  if(r  && !(task.resp||[]).some(n=>n.toLowerCase()===r.toLowerCase())) return false;
+  if(st && task.status!==st) return false;
+  if(pr && task.priority!==pr) return false;
+  if(ti && task.tipo!==ti) return false;
+  if(pe){
+    const start=periodStart(pe);
+    const end=new Date(TODAY); end.setDate(end.getDate()+366);
+    const a=pd(task.atribuicao), p=pd(task.prazo);
+    if((a||p) && !((a&&a>=start&&a<=end)||(p&&p>=start&&p<=end))) return false;
+  }
+  return true;
+}
+
+function buildTableRow(task){
+  const si=statusInfo(task.status);
+  const pi=priorityInfo(task.priority);
+  const dstatus=ds(task.prazo);
+  const dateCls=dstatus==='over'?'over':dstatus==='near'?'near':'';
+  const respAvs=(task.resp||[]).slice(0,3).map(r=>`<div class="tbl-av" style="background:${memberColor(r)}" title="${r}">${memberInitials(r)}</div>`).join('');
+
+  let sicon='';
+  if(task.status==='Feito')
+    sicon=`<div class="tbl-sicon" style="background:#00c875;border-color:#00c875;color:#fff" title="Feito">✓</div>`;
+  else if(task.status==='Em andamento')
+    sicon=`<div class="tbl-sicon" style="background:transparent;border-color:#fdab3d;color:#fdab3d" title="Em andamento">↻</div>`;
+  else if(task.status==='Parado')
+    sicon=`<div class="tbl-sicon" style="background:transparent;border-color:#e2445c;color:#e2445c" title="Parado">■</div>`;
+  else if(task.status==='Atribuído a outro Setor')
+    sicon=`<div class="tbl-sicon" style="background:transparent;border-color:#0086c0;color:#0086c0" title="Atribuído a outro Setor">→</div>`;
+  else
+    sicon=`<div class="tbl-sicon" style="background:transparent;border-color:#cbd5e1;color:#cbd5e1" title="${task.status||'Não iniciado'}">○</div>`;
+
+  return `<tr class="tbl-row" onclick="openEditModal(${task.id},event)" id="tbl-row-${task.id}">
+    <td class="tbl-cell tbl-cell-icon">${sicon}</td>
+    <td class="tbl-cell" style="min-width:130px"><div class="tbl-tipo">${task.tipo}</div></td>
+    <td class="tbl-cell" style="min-width:260px;max-width:380px"><div class="tbl-desc" title="${task.desc.replace(/"/g,'&quot;')}">${task.desc}</div></td>
+    <td class="tbl-cell" style="min-width:80px"><div class="tbl-av-grp">${respAvs||'<span class="tbl-empty">–</span>'}</div></td>
+    <td class="tbl-cell" style="min-width:90px">${task.prazo?`<span class="tbl-date ${dateCls}" onclick="openDatePop(event,${task.id},'prazo')">${fmtD(task.prazo)}</span>`:'<span class="tbl-empty">–</span>'}</td>
+    <td class="tbl-cell" style="min-width:100px"><span class="tbl-pill" style="background:${pi.bg};color:${pi.fg}" onclick="openPrioPop(event,${task.id})">${pi.label||'–'}</span></td>
+    <td class="tbl-cell" style="min-width:120px"><span class="tbl-pill" style="background:${si.bg};color:${si.fg}" onclick="openStatPop(event,${task.id})">${task.status||'–'}</span></td>
+    <td class="tbl-cell" style="min-width:90px">${task.atribuicao?`<span class="tbl-date">${fmtD(task.atribuicao)}</span>`:'<span class="tbl-empty">–</span>'}</td>
+    <td class="tbl-cell" style="min-width:110px">${task.coordenador?`<span class="tbl-coord">${task.coordenador}</span>`:'<span class="tbl-empty">–</span>'}</td>
+    <td class="tbl-cell" style="min-width:130px">${task.sei?`<span class="tbl-sei">${task.sei}</span>`:'<span class="tbl-empty">–</span>'}</td>
+  </tr>`;
+}
+
+function renderTableSection(label, tasks, badgeBg, badgeFg, gid){
+  const colHdr=`<tr>
+    <th class="tbl-col-hdr" style="width:36px"></th>
+    <th class="tbl-col-hdr">Nome</th>
+    <th class="tbl-col-hdr">Descrição</th>
+    <th class="tbl-col-hdr">Responsável</th>
+    <th class="tbl-col-hdr">Prazo</th>
+    <th class="tbl-col-hdr">Prioridade</th>
+    <th class="tbl-col-hdr">Status</th>
+    <th class="tbl-col-hdr">Data inicial</th>
+    <th class="tbl-col-hdr">Coordenador TED</th>
+    <th class="tbl-col-hdr">Processo SEI</th>
+  </tr>`;
+  return `<div class="tbl-grp" id="tbl-grp-${gid}">
+    <div class="tbl-grp-hdr" onclick="toggleTblGrp('${gid}')">
+      <span class="tbl-grp-toggle" id="tbl-toggle-${gid}">▼</span>
+      <span class="tbl-grp-badge" style="background:${badgeBg};color:${badgeFg}">${label}</span>
+      <span class="tbl-grp-count">${tasks.length}</span>
+    </div>
+    <div id="tbl-body-${gid}">
+      <table class="tbl-cols">
+        <thead>${colHdr}</thead>
+        <tbody>
+          ${tasks.map(buildTableRow).join('')}
+          <tr class="tbl-add-row"><td colspan="10" onclick="openModal()">+ Adicionar Tarefa</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function renderTable(){
+  const all=allTasks().filter(taskMatchesFilters);
+  const ativas=sortTasks(all.filter(t=>t.section==='ativas'));
+  const concl =sortTasks(all.filter(t=>t.section==='concluidas'));
+  const container=document.getElementById('table-container');
+  if(!container)return;
+  container.innerHTML=
+    renderTableSection('Tarefas Ativas', ativas, '#2563eb','#fff','ativas')+
+    renderTableSection('Concluídas',     concl,  '#00c875','#fff','concl');
+}
+
+function toggleTblGrp(gid){
+  const body=document.getElementById('tbl-body-'+gid);
+  const toggle=document.getElementById('tbl-toggle-'+gid);
+  if(!body)return;
+  const hidden=body.style.display==='none';
+  body.style.display=hidden?'':'none';
+  toggle.style.transform=hidden?'':'rotate(-90deg)';
+}
+
+// ══════════════════════════════════════════════════════════════
 // SORT
 // ══════════════════════════════════════════════════════════════
 const PRIO_ORDER = {'Crítico':0,'Alta':1,'Média':2,'Baixa':3,'':4};
@@ -1771,6 +1913,7 @@ function render(){
   });
   updateStats(); populateFilters(); applyFilters();
   if(currentView==='kanban') renderKanban();
+  if(currentView==='table') renderTable();
   updateAlertBanner();
 }
 
@@ -1824,6 +1967,7 @@ function taskInPeriod(card,period){
   return checkDate(a)||checkDate(p);
 }
 function applyFilters(){
+  if(currentView==='table'){renderTable();return;}
   const s=document.getElementById('fsearch').value.toLowerCase().trim();
   const r=document.getElementById('fresp').value;
   const st=document.getElementById('fstatus').value;
@@ -2822,7 +2966,7 @@ function restoreData(event){
 // ══════════════════════════════════════════════════════════════
 // KANBAN VIEW
 // ══════════════════════════════════════════════════════════════
-let currentView = 'list';
+let currentView = 'table';
 let dragTaskId  = null;
 
 const KANBAN_COLS = [
@@ -2837,27 +2981,34 @@ const KANBAN_COLS = [
 function setView(v){
   currentView = v;
   const listEl   = document.querySelector('.main');
+  const tableEl  = document.getElementById('table-container');
   const kanbanEl = document.getElementById('kanban-container');
   const dashEl   = document.getElementById('dash-container');
   const btnList  = document.getElementById('btn-view-list');
+  const btnTable = document.getElementById('btn-view-table');
   const btnKanban= document.getElementById('btn-view-kanban');
   const btnDash  = document.getElementById('btn-view-dash');
   // hide all
   listEl.style.display   = 'none';
+  tableEl.style.display  = 'none';
   kanbanEl.style.display = 'none';
   dashEl.style.display   = 'none';
-  [btnList,btnKanban,btnDash].forEach(b=>b&&b.classList.remove('active'));
+  [btnList,btnTable,btnKanban,btnDash].forEach(b=>b&&b.classList.remove('active'));
   if(v==='kanban'){
     kanbanEl.style.display='block';
-    btnKanban.classList.add('active');
+    btnKanban&&btnKanban.classList.add('active');
     renderKanban();
   } else if(v==='dash'){
     dashEl.style.display='block';
     btnDash&&btnDash.classList.add('active');
     renderDashboard();
+  } else if(v==='table'){
+    tableEl.style.display='block';
+    btnTable&&btnTable.classList.add('active');
+    renderTable();
   } else {
     listEl.style.display='';
-    btnList.classList.add('active');
+    btnList&&btnList.classList.add('active');
     render();
   }
 }
