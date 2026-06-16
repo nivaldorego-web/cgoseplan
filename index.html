@@ -1668,6 +1668,7 @@ function buildCard(task){
 
   const coordB=task.coordenador?`<span class="badge-label">Coord. TED:</span><span class="badge bcoord">📋 ${task.coordenador}</span>`:'';
   const seiB=task.sei?`<span class="badge-label">Processo SEI:</span><span class="badge" style="background:#eff6ff;color:#1d4ed8;font-family:monospace;font-size:11px">🔢 ${task.sei}</span>`:'';
+  const conclB=task.conclusaoDate?`<span class="badge-label">Concluído em:</span><span class="badge" style="background:#f0fdf4;color:#15803d">✅ ${fmtD(task.conclusaoDate)}</span>`:'';
   const newB=isUser?`<span class="badge bnew">✨ Nova</span>`:'';
 
   // Progress
@@ -1721,7 +1722,7 @@ function buildCard(task){
           ${task.prazo && task.status!=='Feito' ? `<div class="prazo-dot prazo-dot-${dstatus||'ok'}" title="${dstatus==='over'?'Atrasada':dstatus==='near'?'Vence em breve':'No prazo'}"></div>` : ''}
         </div>
         <div class="tc-desc">${task.desc}</div>
-        <div class="tc-meta">${pB}${sB}${rB}<span class="badge-atrib">${atribB}</span>${prazoB}<span class="badge-dur">${durB}</span><span class="badge-coord">${coordB}</span>${seiB}<span class="badge-new">${newB}</span></div>
+        <div class="tc-meta">${pB}${sB}${rB}<span class="badge-atrib">${atribB}</span>${prazoB}<span class="badge-dur">${durB}</span><span class="badge-coord">${coordB}</span>${seiB}${conclB}<span class="badge-new">${newB}</span></div>
         ${task.status!=='Feito' ? buildPctBar(task) : ''}
       </div>
       <div class="tc-right">
@@ -1740,7 +1741,7 @@ function buildCard(task){
 function groupByMonth(taskList){
   const groups={};
   taskList.forEach(t=>{
-    const dateKey=t.atribuicao||t.prazo||null;
+    const dateKey=t.conclusaoDate||t.atribuicao||t.prazo||null;
     let label='Sem data definida';
     let sortKey='0000-00';
     if(dateKey){
@@ -1799,7 +1800,8 @@ function taskMatchesFilters(task){
   const ti = document.getElementById('ftipo')?.value||'';
   const pe = document.getElementById('fperiod')?.value||'';
   if(s  && !task.desc.toLowerCase().includes(s) && !(task.resp||[]).join(',').toLowerCase().includes(s)) return false;
-  if(r  && !(task.resp||[]).some(n=>n.toLowerCase()===r.toLowerCase())) return false;
+  if(r==='__sem_resp__'){if((task.resp||[]).length>0) return false;}
+  else if(r && !(task.resp||[]).some(n=>n.toLowerCase()===r.toLowerCase())) return false;
   if(st && task.status!==st) return false;
   if(pr && task.priority!==pr) return false;
   if(ti && task.tipo!==ti) return false;
@@ -1874,7 +1876,9 @@ function renderTblCell(col, task){
       const doneBtn=isConcluida
         ?`<button class="btn-reopen" onclick="reopenTask(${task.id},event)">↩ Reabrir</button>`
         :`<button class="btn-done" onclick="markDone(${task.id},event)">✔ Concluído</button>`;
-      return `<div class="tbl-actions">${cmtBtn}${doneBtn}</div>`;
+      const isUser=!!task.userAdded;
+      const delBtn=isUser?`<button class="btn-del-card" onclick="delTask(${task.id},event)" title="Excluir">🗑</button>`:'';
+      return `<div class="tbl-actions">${cmtBtn}${doneBtn}${delBtn}</div>`;
     }
     default: return '';
   }
@@ -2208,7 +2212,7 @@ function populateFilters(){
   const rSel=document.getElementById('fresp'),prevR=rSel.value;
   const rset=new Set();
   tasks.forEach(t=>(t.resp||[]).forEach(r=>{if(r&&!r.includes('@'))rset.add(r);}));
-  rSel.innerHTML='<option value="">Todos</option>'+[...rset].sort().map(r=>`<option value="${r.toLowerCase()}" ${prevR===r.toLowerCase()?'selected':''}>${r.split(' ').slice(0,2).join(' ')}</option>`).join('');
+  rSel.innerHTML='<option value="">Todos</option>'+[...rset].sort().map(r=>`<option value="${r.toLowerCase()}" ${prevR===r.toLowerCase()?'selected':''}>${r.split(' ').slice(0,2).join(' ')}</option>`).join('')+'<option value="__sem_resp__" '+(prevR==='__sem_resp__'?'selected':'')+'>— Sem Responsável</option>';
   const tSel=document.getElementById('ftipo'),prevT=tSel.value;
   const tipos=[...new Set(tasks.map(t=>t.tipo).filter(Boolean))].sort();
   tSel.innerHTML='<option value="">Todos</option>'+tipos.map(t=>`<option value="${t}" ${prevT===t?'selected':''}>${t}</option>`).join('');
@@ -2241,8 +2245,9 @@ function applyFilters(){
   let any=false;
   document.querySelectorAll('.task-card').forEach(card=>{
     const matchSearch=!s||(card.dataset.desc.includes(s)||card.dataset.resp.includes(s));
+    const matchResp=!r||(r==='__sem_resp__'?!card.dataset.resp:card.dataset.resp.includes(r));
     const show=matchSearch
-             &&(!r||card.dataset.resp.includes(r))
+             &&matchResp
              &&(!st||card.dataset.status===st)
              &&(!pr||card.dataset.priority.includes(pr))
              &&(!ti||card.dataset.tipo===ti)
@@ -2273,10 +2278,11 @@ function clearFilters(){
 // ══════════════════════════════════════════════════════════════
 function markDone(id,evt){
   evt.stopPropagation();
-  applyOv(id,{status:'Feito',section:'concluidas'});
+  const today=new Date().toISOString().slice(0,10);
+  applyOv(id,{status:'Feito',section:'concluidas',conclusaoDate:today});
   // If it's a user task, also update userTasks array
   const ui=userTasks.findIndex(t=>t.id===id);
-  if(ui>=0){userTasks[ui].status='Feito';userTasks[ui].section='concluidas';}
+  if(ui>=0){userTasks[ui].status='Feito';userTasks[ui].section='concluidas';userTasks[ui].conclusaoDate=today;}
   persist();
   // Show completed section
   const cs=document.getElementById('section-concluidas');
@@ -2335,7 +2341,10 @@ function openStatPop(evt,id){
 function applyStatus(id,val){
   const old=(overrides[id]||{}).status||(allTasks().find(t=>t.id===id)||{}).status;
   logHistory(id,'status',old,val);
-  applyOv(id,{status:val});closeEp();render();showToast('✅ Status: '+val);
+  const patch={status:val};
+  if(val==='Feito'){patch.section='concluidas';patch.conclusaoDate=new Date().toISOString().slice(0,10);}
+  else if(old==='Feito'){patch.section='ativas';patch.conclusaoDate=null;}
+  applyOv(id,patch);closeEp();render();showToast('✅ Status: '+val);
 }
 
 // Priority popup
@@ -2879,16 +2888,10 @@ function submitUpdate(){
   saveComments();
   ta.value='';
   renderUpList();
-  // update comment button badge on card
-  const card = document.getElementById('task-'+upTaskId);
-  if(card){
-    const btn=card.querySelector('.btn-comments');
-    if(btn){
-      const n=comments[upTaskId].length;
-      btn.className='btn-comments has-comments';
-      btn.textContent=`💬 ${n}`;
-    }
-  }
+  // update comment button badge on card (list) and table row
+  [document.getElementById('task-'+upTaskId), document.getElementById('tbl-row-'+upTaskId)].forEach(el=>{
+    if(el){const btn=el.querySelector('.btn-comments');if(btn){const n=comments[upTaskId].length;btn.className='btn-comments has-comments';btn.textContent=`💬 ${n}`;}}
+  });
   showToast('💬 Atualização publicada!');
   document.getElementById('mention-popup').style.display='none';
 }
@@ -2917,16 +2920,10 @@ function deleteComment(commentId){
   comments[upTaskId] = comments[upTaskId].filter(function(c){ return c.id !== commentId; });
   saveComments();
   renderUpList();
-  // update badge on card
-  var card = document.getElementById('task-'+upTaskId);
-  if(card){
-    var btn = card.querySelector('.btn-comments');
-    if(btn){
-      var n = (comments[upTaskId]||[]).length;
-      if(n>0){ btn.className='btn-comments has-comments'; btn.innerHTML='💬 '+n; }
-      else    { btn.className='btn-comments';              btn.innerHTML='💬'; }
-    }
-  }
+  // update badge on card (list) and table row
+  [document.getElementById('task-'+upTaskId), document.getElementById('tbl-row-'+upTaskId)].forEach(function(el){
+    if(el){var btn=el.querySelector('.btn-comments');if(btn){var n=(comments[upTaskId]||[]).length;if(n>0){btn.className='btn-comments has-comments';btn.innerHTML='💬 '+n;}else{btn.className='btn-comments';btn.innerHTML='💬';}}}
+  });
   showToast('🗑 Comentário excluído');
 }
 
