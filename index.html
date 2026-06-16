@@ -1786,6 +1786,7 @@ let tblCols = [
   {id:'status',  label:'Status',        width:145},
   {id:'coord',   label:'Coordenador',   width:120},
   {id:'sei',     label:'Processo SEI',  width:140},
+  {id:'conclusao',label:'Concluído em', width:110},
   {id:'actions', label:'',              width:160, fixed:true},
 ];
 let tblSort    = {col:null, dir:'asc'};
@@ -1869,6 +1870,8 @@ function renderTblCell(col, task){
       return task.coordenador?`<span class="tbl-coord">${task.coordenador}</span>`:'<span class="tbl-empty">–</span>';
     case 'sei':
       return task.sei?`<span class="tbl-sei">${task.sei}</span>`:'<span class="tbl-empty">–</span>';
+    case 'conclusao':
+      return task.conclusaoDate?`<span class="tbl-date" style="color:#15803d">✅ ${fmtD(task.conclusaoDate)}</span>`:'<span class="tbl-empty">–</span>';
     case 'actions': {
       const isConcluida = task.section==='concluidas';
       const cmtCount = (comments[task.id]||[]).length;
@@ -2181,7 +2184,7 @@ function render(){
   });
   updateStats(); populateFilters(); applyFilters();
   if(currentView==='kanban') renderKanban();
-  if(currentView==='table') renderTable();
+  renderTable(); // sempre manter tabela sincronizada
   updateAlertBanner();
 }
 
@@ -3376,8 +3379,8 @@ function onKbDrop(e, newStatus){
 
   // If moving to Feito, also set section to concluidas
   const patch = {status: newStatus};
-  if(newStatus === 'Feito') patch.section = 'concluidas';
-  else if(task.section === 'concluidas') patch.section = 'ativas';
+  if(newStatus === 'Feito'){patch.section='concluidas';patch.conclusaoDate=new Date().toISOString().slice(0,10);}
+  else if(task.section === 'concluidas'){patch.section='ativas';patch.conclusaoDate=null;}
 
   applyOv(dragTaskId, patch);
   const ui = userTasks.findIndex(t=>t.id===dragTaskId);
