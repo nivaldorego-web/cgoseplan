@@ -842,9 +842,10 @@ header p{font-size:12px;opacity:.75;margin-top:2px;}
 .tbl-add-row td{padding:8px 12px;font-size:12px;color:#94a3b8;cursor:pointer;transition:color .2s;background:#fafafa;}
 .tbl-add-row:hover td{color:var(--accent);background:#f0f4ff;}
 .tbl-actions{display:flex;align-items:center;gap:4px;justify-content:flex-end;flex-wrap:nowrap;}
-.tbl-actions .btn-done{padding:4px 8px;font-size:11px;border-radius:6px;}
+.tbl-actions .btn-done{padding:4px 10px;font-size:11px;border-radius:6px;}
 .tbl-actions .btn-reopen{padding:4px 8px;font-size:11px;}
-.tbl-actions .btn-del-card{opacity:1;padding:4px 7px;font-size:11px;}
+.tbl-actions .btn-del-card{opacity:0;padding:4px 7px;font-size:11px;transition:opacity .15s;}
+.tbl-row:hover .tbl-actions .btn-del-card{opacity:1;}
 .tbl-actions .btn-comments{padding:4px 7px;font-size:11px;}
 /* subtarefas na tabela */
 .tbl-expand{font-size:9px;color:var(--muted);cursor:pointer;width:14px;text-align:center;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .15s;user-select:none;}
