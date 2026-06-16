@@ -1588,7 +1588,7 @@ function setSyncStatus(s){
   else         {dot.style.background='#f59e0b';lbl.textContent='Sincronizando...';}
 }
 
-function allTasks(){return[...BASE_TASKS,...userTasks].map(t=>{const ov=overrides[t.id];return ov?{...t,...ov}:t;});}
+function allTasks(){return[...BASE_TASKS,...userTasks].map(t=>{const ov=overrides[t.id];return ov?{...t,...ov}:t;}).filter(t=>!t._deleted);}
 function getTask(id){return allTasks().find(t=>t.id===id);}
 function applyOv(id,patch){overrides[id]={...(overrides[id]||{}),...patch};persist();}
 function nextId(){return Math.max(0,...allTasks().map(t=>t.id))+1;}
@@ -1787,7 +1787,7 @@ let tblCols = [
   {id:'coord',   label:'Coordenador',   width:120},
   {id:'sei',     label:'Processo SEI',  width:140},
   {id:'conclusao',label:'Concluído em', width:110},
-  {id:'actions', label:'',              width:160, fixed:true},
+  {id:'actions', label:'',              width:210, fixed:true},
 ];
 let tblSort    = {col:null, dir:'asc'};
 let tblDragIdx = null;
@@ -1879,8 +1879,7 @@ function renderTblCell(col, task){
       const doneBtn=isConcluida
         ?`<button class="btn-reopen" onclick="reopenTask(${task.id},event)">↩ Reabrir</button>`
         :`<button class="btn-done" onclick="markDone(${task.id},event)">✔ Concluído</button>`;
-      const isUser=!!task.userAdded;
-      const delBtn=isUser?`<button class="btn-del-card" onclick="delTask(${task.id},event)" title="Excluir">🗑</button>`:'';
+      const delBtn=`<button class="btn-del-card" onclick="delTask(${task.id},event)" title="Excluir">🗑</button>`;
       return `<div class="tbl-actions">${cmtBtn}${doneBtn}${delBtn}</div>`;
     }
     default: return '';
@@ -2309,8 +2308,15 @@ function reopenTask(id,evt){
 function delTask(id,evt){
   evt.stopPropagation();
   if(!confirm('Excluir esta tarefa?'))return;
-  userTasks=userTasks.filter(t=>t.id!==id);
-  delete overrides[id]; persist(); render();
+  const isBase=BASE_TASKS.some(t=>t.id===id);
+  if(isBase){
+    // BASE_TASKS não podem ser removidas do array, marca como deletada via override
+    applyOv(id,{_deleted:true});
+  } else {
+    userTasks=userTasks.filter(t=>t.id!==id);
+    delete overrides[id];
+  }
+  persist(); render();
   showToast('🗑 Tarefa excluída');
 }
 
