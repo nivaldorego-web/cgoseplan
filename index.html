@@ -1692,7 +1692,7 @@ function buildCard(task){
     actionBtns=`<button class="btn-reopen" onclick="reopenTask(${task.id},event)" title="Reabrir tarefa">↩ Reabrir</button>`;
   }
   const editBtn=`<button class="btn-edit-card" onclick="openEditModal(${task.id},event)">✏️</button>`;
-  const delBtn=isUser?`<button class="btn-del-card" onclick="delTask(${task.id},event)">🗑</button>`:'';
+  const delBtn=`<button class="btn-del-card" onclick="delTask(${task.id},event)">🗑</button>`;
 
   // Subtasks
   let subsHtml='';
